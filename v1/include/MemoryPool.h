@@ -48,6 +48,7 @@ private:
     std::atomic<Slot*>  free_list_;         // 指向空闲的槽(被使用过后又被释放的槽)
     Slot*               last_slot_;         // 作为当前内存块中最后能够存放元素的位置标识(超过该位置需申请新的内存块)
     std::mutex          mutex_for_block_;   // 保证多线程情况下避免不必要的重复开辟内存导致的浪费行为
+    std::mutex          mutex_for_freelist_;// 保证多线程情况下正确访问 free_list
 };
 
 

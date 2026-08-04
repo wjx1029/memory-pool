@@ -87,52 +87,30 @@ size_t MemoryPool::padPointer(char* p, size_t align)
     return rem == 0 ? 0 : (align - rem);
 }
 
-// 实现无锁入队操作
+// 实现入队操作
 bool MemoryPool::pushFreeList(Slot* slot)
 {
-    while(true)
-    {
-        // 获取当前头节点
-        Slot* old_head = free_list_.load(std::memory_order_relaxed);
-        // 将新节点的 next 指向当前头节点
-        slot->next.store(old_head, std::memory_order_relaxed);
-        // 尝试将新节点设置为头节点
-        if (free_list_.compare_exchange_weak(old_head, slot, std::memory_order_release, std::memory_order_relaxed))
-            return true;
-        // 失败：说明另一个线程可能已经修改了 freeList_
-        // CAS 失败则重试
-    }
+    std::lock_guard<std::mutex> lock(mutex_for_freelist_);
+    Slot* old_head = free_list_.load(std::memory_order_relaxed);
+    slot->next.store(old_head, std::memory_order_relaxed);
+    free_list_ = slot;
+    return true;
 }
 
 // 实现无锁出队操作
 Slot* MemoryPool::popFreeList()
 {
-    while(true)
-    {
-        Slot* old_head = free_list_.load(std::memory_order_acquire);
-        if (old_head == nullptr)
-            return nullptr;
+    std::lock_guard<std::mutex> lock(mutex_for_freelist_);
+    Slot* old_head = free_list_.load(std::memory_order_acquire);
+    if (old_head == nullptr)
+        return nullptr;
 
-        // 在访问 newHead 之前再次验证 oldHead 的有效性
-        Slot* new_head = nullptr;
-        try
-        {
-            new_head = old_head->next.load(std::memory_order_relaxed);
-        }
-        catch(...)
-        {   // 如果返回失败，则continue重新尝试申请内存
-            continue;
-        }
+    Slot* new_head = nullptr;
+    new_head = old_head->next.load(std::memory_order_relaxed);
 
-        // 尝试更新头结点
-        // 原子性地尝试将 freeList_ 从 oldHead 更新为 newHead
-        if (free_list_.compare_exchange_weak(old_head, new_head, std::memory_order_acquire, std::memory_order_relaxed))
-        {
-            return old_head;
-        }
-        // 失败：说明另一个线程可能已经修改了 freeList_
-        // CAS 失败则重试
-    }
+    free_list_ = new_head;
+    return old_head;
+
 }
 
 }
