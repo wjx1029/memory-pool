@@ -38,8 +38,8 @@ private:
     size_t padPointer(char* p, size_t align);
 
     // 使用CAS操作进行无锁入队和出队
-    bool  ushFreeList(Slot* slot);
-    Slot* popFreqList();
+    bool  pushFreeList(Slot* slot);
+    Slot* popFreeList();
 private:
     int                 block_size_;        // 内存块大小
     int                 slot_size_;         // 槽大小
