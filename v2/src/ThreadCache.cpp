@@ -1,5 +1,6 @@
 # include "../include/ThreadCache.h"
 # include "../include/CentralCache.h"
+# include <cstdlib>
 
 
 namespace SeanMemoryPool
@@ -65,7 +66,7 @@ void* ThreadCache::fetchFromCentralCache(size_t index)
     // 从中心缓存批量获取内存
     void* start = CentralCache::getInstance().fetchRange(index);
     if (!start)
-        return;
+        return nullptr;
 
     // 取回一个, 其余放入空闲链表
     void* result = start;
@@ -133,6 +134,14 @@ void ThreadCache::returnToCentralCache(void* start, size_t size)
         }
     }
 
+}
+
+// 判断是否需要将内存回收给中心缓存
+bool ThreadCache::shouldReturnToCentralCache(size_t index)
+{
+    // 设定阈值，例如：当自由链表的大小超过一定数量时
+    size_t threshold = 256; 
+    return (freeListSize_[index] > threshold);
 }
 
 }
