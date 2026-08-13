@@ -43,7 +43,7 @@ CentralCache::CentralCache()
 void* CentralCache::fetchRange(size_t index)
 {
     // 索引检查，当索引大于等于FREE_LIST_SIZE时，说明申请内存过大应直接向系统申请
-    if (index > FREE_LIST_SIZE)
+    if (index >= FREE_LIST_SIZE)
         return nullptr;
 
     // 自旋锁保护
